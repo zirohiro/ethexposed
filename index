@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ethexposed — On-Chain Attack Detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0c0c0c;
+  --s1:      #131313;
+  --s2:      #191919;
+  --b1:      #222;
+  --b2:      #2c2c2c;
+  --red:     #ff3030;
+  --red2:    #8b1c1c;
+  --redglow: rgba(255,48,48,0.13);
+  --amber:   #f5a623;
+  --green:   #00e87a;
+  --blue:    #4a9eff;
+  --fg:      #efefef;
+  --mid:     #777;
+  --dim:     #3a3a3a;
+  --mono: 'IBM Plex Mono', monospace;
+  --dis:  'Bebas Neue', sans-serif;
+  --sans: 'DM Sans', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.025) 3px,rgba(0,0,0,.025) 4px);pointer-events:none;z-index:9000}
+
+.wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:0 28px 80px}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:32px 0 22px;border-bottom:1px solid var(--b1)}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-mark{width:34px;height:34px;flex-shrink:0}
+.logo-mark svg{width:100%;height:100%}
+.logo-name{font-family:var(--dis);font-size:1.7rem;letter-spacing:.05em;line-height:1}
+.logo-name em{font-style:normal;color:var(--red)}
+.logo-tag{font-family:var(--mono);font-size:.55rem;color:var(--dim);letter-spacing:.15em;text-transform:uppercase;margin-top:3px}
+.hbadges{display:flex;align-items:center;gap:8px}
+.hb{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:2px;border:1px solid var(--b2);color:var(--mid)}
+.hb-live{border-color:var(--red2);color:var(--red)}
+.hb-live::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--red);margin-right:5px;vertical-align:middle;animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+
+/* HERO */
+.hero{display:grid;grid-template-columns:1fr 340px;gap:48px;padding:60px 0 48px;align-items:center}
+.hero-eyebrow{font-family:var(--mono);font-size:.62rem;color:var(--red);letter-spacing:.22em;text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.hero-eyebrow::before{content:'//';color:var(--dim)}
+h1{font-family:var(--dis);font-size:clamp(3rem,6.5vw,4.6rem);line-height:.93;letter-spacing:.02em;margin-bottom:22px}
+h1 .r{color:var(--red)}
+h1 .g{color:var(--dim);-webkit-text-stroke:1px var(--b2)}
+.hero-p{font-size:.88rem;color:#777;line-height:1.75;max-width:360px}
+.pill-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:22px}
+.pill{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;padding:4px 10px;border-radius:20px;border:1px solid var(--b2);color:var(--mid);white-space:nowrap}
+.pill.hot{border-color:var(--red2);color:#cc5555;background:rgba(139,28,28,.06)}
+.checks-list{display:flex;flex-direction:column;gap:0;border:1px solid var(--b1);border-radius:3px;overflow:hidden}
+.check-item{padding:11px 14px;border-bottom:1px solid var(--b1);display:grid;grid-template-columns:1fr;gap:3px}
+.check-item:last-child{border-bottom:none}
+.check-item.check-soon{opacity:.45}
+.check-name{font-family:var(--mono);font-size:.68rem;color:var(--fg);font-weight:500;display:flex;align-items:center;gap:8px}
+.check-desc{font-family:var(--mono);font-size:.58rem;color:var(--mid);line-height:1.5}
+.soon-tag{font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);border:1px solid var(--dim);padding:1px 5px;border-radius:2px}
+
+/* INPUT */
+.input-section{margin-bottom:48px}
+.input-label{font-family:var(--mono);font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mid);margin-bottom:10px}
+.input-row{display:flex;border:1px solid var(--b2);border-radius:3px;overflow:hidden;background:var(--s1);transition:border-color .2s,box-shadow .2s}
+.input-row:focus-within{border-color:var(--red);box-shadow:0 0 0 3px var(--redglow)}
+.input-pre{font-family:var(--mono);font-size:.7rem;color:var(--mid);padding:15px 14px;background:var(--s2);border-right:1px solid var(--b1);user-select:none;display:flex;align-items:center}
+input[type=text]{flex:1;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:.78rem;color:var(--fg);padding:15px 16px;letter-spacing:.03em}
+input[type=text]::placeholder{color:var(--dim)}
+.run-btn{font-family:var(--dis);font-size:1.05rem;letter-spacing:.14em;background:var(--red);color:#000;border:none;padding:0 30px;cursor:pointer;transition:background .15s,transform .1s;white-space:nowrap}
+.run-btn:hover{background:#ff5555}
+.run-btn:active{transform:scale(.98)}
+.run-btn:disabled{background:#444;color:#222;cursor:not-allowed}
+.input-hints{margin-top:9px;display:flex;gap:18px;font-family:var(--mono);font-size:.58rem;color:var(--dim)}
+.input-hints span::before{content:'→ ';color:var(--red2)}
+.sample-link{font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:7px}
+.sample-link a{color:#cc4444;text-decoration:none;cursor:pointer}
+.sample-link a:hover{text-decoration:underline}
+
+/* LOADER */
+.loader{display:none;flex-direction:column;align-items:center;padding:56px 0;gap:18px}
+.loader.on{display:flex}
+.load-bar-bg{width:300px;height:2px;background:var(--b1);border-radius:1px;overflow:hidden}
+.load-bar{height:100%;background:var(--red);box-shadow:0 0 10px var(--red);animation:sweep 1.6s ease-in-out infinite}
+@keyframes sweep{0%{width:0;margin-left:0}50%{width:65%;margin-left:0}100%{width:0;margin-left:100%}}
+.load-label{font-family:var(--mono);font-size:.62rem;color:var(--mid);letter-spacing:.12em;text-align:center}
+.load-steps{display:flex;flex-direction:column;gap:5px;width:300px}
+.lstep{font-family:var(--mono);font-size:.58rem;color:var(--dim);display:flex;align-items:center;gap:8px;transition:color .2s}
+.lstep.on{color:var(--red)}
+.lstep.ok{color:#33aa66}
+.lstep::before{content:'○';font-size:.5rem}
+.lstep.on::before{content:'◉';color:var(--red)}
+.lstep.ok::before{content:'●';color:var(--green)}
+
+/* ERROR */
+.error-box{display:none;padding:14px 18px;border:1px solid var(--red2);border-radius:3px;background:rgba(139,28,28,.08);font-family:var(--mono);font-size:.63rem;color:#cc5555;line-height:1.7;margin-bottom:20px}
+.error-box.on{display:block}
+
+/* RESULTS */
+.results{display:none;animation:riseup .3s ease}
+.results.on{display:block}
+@keyframes riseup{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.rhead{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;padding:22px 0 18px;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);margin-bottom:36px}
+.raddr-label{font-family:var(--mono);font-size:.57rem;color:var(--mid);letter-spacing:.15em;text-transform:uppercase;margin-bottom:5px}
+.raddr{font-family:var(--mono);font-size:.8rem;letter-spacing:.03em;word-break:break-all;line-height:1.4}
+.raddr .ah{color:var(--fg)}
+.raddr .am{color:var(--dim)}
+.raddr .at{color:var(--fg)}
+.rmeta{font-family:var(--mono);font-size:.57rem;color:var(--dim);margin-top:7px;display:flex;gap:14px;flex-wrap:wrap}
+.rscore-side{text-align:right;flex-shrink:0}
+.rscore-label{font-family:var(--mono);font-size:.55rem;color:var(--mid);letter-spacing:.14em;text-transform:uppercase;margin-bottom:3px}
+.rscore{font-family:var(--dis);font-size:3.8rem;line-height:1;letter-spacing:.04em}
+.rscore.red{color:var(--red)}
+.rscore.amber{color:var(--amber)}
+.rscore.green{color:var(--green)}
+.rverdict{font-family:var(--mono);font-size:.58rem;margin-top:3px;letter-spacing:.07em}
+.rv-red{color:var(--red)}
+.rv-green{color:var(--green)}
+.rv-amber{color:var(--amber)}
+
+/* SECTION TITLE */
+.sec-title{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sec-title span{font-family:var(--mono);font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mid);white-space:nowrap}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--b1)}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:32px}
+@media(max-width:620px){.cards{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.checks-list{display:none}}
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:3px;overflow:hidden;position:relative}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.card.crit{border-color:var(--red2)}.card.crit::before{background:var(--red)}
+.card.warn{border-color:rgba(245,166,35,.22)}.card.warn::before{background:var(--amber)}
+.card.ok::before{background:var(--green)}
+.card.skip::before{background:var(--dim)}
+.ci{padding:13px 15px}
+.ctop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px}
+.cname{font-size:.8rem;font-weight:500;color:var(--fg);line-height:1.2}
+.cbadge{font-family:var(--mono);font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:2px;flex-shrink:0;font-weight:700}
+.cb-crit{background:rgba(255,48,48,.1);color:var(--red);border:1px solid var(--red2)}
+.cb-warn{background:rgba(245,166,35,.09);color:var(--amber);border:1px solid rgba(245,166,35,.28)}
+.cb-ok{background:rgba(0,232,122,.07);color:var(--green);border:1px solid rgba(0,232,122,.22)}
+.cb-skip{background:rgba(60,60,60,.3);color:var(--mid);border:1px solid var(--b2)}
+.cdesc{font-family:var(--mono);font-size:.62rem;color:#5a5a5a;line-height:1.55;margin-bottom:9px}
+.cfinding{font-family:var(--mono);font-size:.62rem;padding:7px 10px;border-radius:2px;line-height:1.5}
+.cf-crit{background:rgba(255,48,48,.05);color:#cc5252;border-left:2px solid var(--red2)}
+.cf-ok{background:rgba(0,232,122,.04);color:#3d8857;border-left:2px solid rgba(0,232,122,.2)}
+.cf-warn{background:rgba(245,166,35,.05);color:#9a7022;border-left:2px solid rgba(245,166,35,.3)}
+.cf-skip{background:rgba(40,40,40,.5);color:var(--mid);border-left:2px solid var(--dim)}
+
+/* DETAIL ROWS */
+.detail-list{display:flex;flex-direction:column;margin-top:8px}
+.dl-row{font-family:var(--mono);font-size:.6rem;display:grid;padding:6px 0;border-bottom:1px solid var(--b1);color:#555;align-items:center;gap:8px}
+.dl-row:last-child{border-bottom:none}
+.dl-row.dust{grid-template-columns:1fr auto auto}
+.dl-row.poison{grid-template-columns:1fr}
+.dl-addr{color:#777;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dl-amount{color:var(--amber);white-space:nowrap}
+.dl-date{color:var(--dim);font-size:.55rem;white-space:nowrap}
+
+/* POISON PAIR */
+.poison-pair{display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:rgba(255,48,48,.03);border-radius:2px;border:1px solid rgba(255,48,48,.08);margin-bottom:6px}
+.poison-pair:last-child{margin-bottom:0}
+.pp-row{font-family:var(--mono);font-size:.6rem;display:flex;gap:8px;align-items:baseline}
+.pp-tag{font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);width:38px;flex-shrink:0}
+.pp-real{color:var(--green);word-break:break-all}
+.pp-fake{color:var(--red);word-break:break-all}
+.pp-note{font-size:.55rem;color:var(--amber);margin-top:3px;padding-left:46px}
+
+/* APPROVAL TABLE */
+.appr-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.6rem;margin-top:6px}
+.appr-table th{text-align:left;color:var(--dim);padding:0 6px 5px 0;border-bottom:1px solid var(--b1);font-weight:400;letter-spacing:.08em}
+.appr-table td{padding:6px 6px 6px 0;border-bottom:1px solid var(--b1);color:#666;vertical-align:middle}
+.appr-table tr:last-child td{border-bottom:none}
+.at-token{color:var(--fg);font-weight:500}
+.at-unlimited{color:var(--red);font-weight:700}
+.at-large{color:var(--amber)}
+.revoke-row{font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:8px;padding-top:8px;border-top:1px solid var(--b1)}
+.revoke-row a{color:var(--red);text-decoration:none}
+.revoke-row a:hover{text-decoration:underline}
+
+/* EDUCATION SECTION */
+.edu-section{margin-top:48px}
+.edu-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+@media(max-width:620px){.edu-grid{grid-template-columns:1fr}}
+.edu-card{background:var(--s1);border:1px solid var(--b1);border-radius:3px;padding:18px 18px 14px;position:relative;overflow:hidden}
+.edu-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--b2)}
+.edu-card.attack::before{background:var(--red2)}
+.edu-card.defense::before{background:var(--green)}
+.edu-tag{font-family:var(--mono);font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.edu-tag.t-attack{color:var(--red2)}
+.edu-tag.t-defense{color:#2a7a50}
+.edu-title{font-size:.85rem;font-weight:600;color:var(--fg);margin-bottom:8px;line-height:1.2}
+.edu-body{font-family:var(--mono);font-size:.63rem;color:#666;line-height:1.7}
+.edu-body p{margin-bottom:8px}
+.edu-body p:last-child{margin-bottom:0}
+.edu-steps{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.edu-step{font-family:var(--mono);font-size:.6rem;color:#555;display:flex;gap:8px;line-height:1.5}
+.edu-step-num{color:var(--green);flex-shrink:0;font-weight:700}
+.edu-full{grid-column:1/-1}
+
+/* DISCLAIMER + FOOTER */
+.disclaimer{margin-top:40px;padding:14px 16px;border:1px solid var(--b1);border-radius:3px;background:var(--s1);font-family:var(--mono);font-size:.6rem;color:var(--dim);line-height:1.7;display:flex;gap:10px}
+.disclaimer::before{content:'!';width:16px;height:16px;border:1px solid var(--dim);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.55rem;margin-top:1px}
+footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--b1);display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:.56rem;color:var(--dim)}
+.foot-brand{font-family:var(--dis);font-size:.85rem;letter-spacing:.06em;color:var(--dim)}
+.foot-brand em{font-style:normal;color:var(--red2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="15" stroke="#ff3030" stroke-width="1.2"/>
+        <circle cx="18" cy="18" r="7" stroke="#ff3030" stroke-width="1" opacity=".6"/>
+        <circle cx="18" cy="18" r="2.5" fill="#ff3030"/>
+        <line x1="18" y1="2" x2="18" y2="10" stroke="#ff3030" stroke-width="1.2"/>
+        <line x1="18" y1="26" x2="18" y2="34" stroke="#ff3030" stroke-width="1.2"/>
+        <line x1="2" y1="18" x2="10" y2="18" stroke="#ff3030" stroke-width="1.2"/>
+        <line x1="26" y1="18" x2="34" y2="18" stroke="#ff3030" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">eth<em>exposed</em></div>
+      <div class="logo-tag">on-chain attack detector · full history</div>
+    </div>
+  </div>
+  <div class="hbadges">
+    <span class="hb hb-live">mainnet live</span>
+    <span class="hb">client-side</span>
+    <span class="hb">no tracking</span>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">Ethereum security scanner</div>
+    <h1>HAS YOUR<br>WALLET BEEN<br><span class="r">ATTACKED</span><span class="g">?</span></h1>
+    <p class="hero-p">Full on-chain history analysis — from block 0. Paste any Ethereum address. No signup, no extensions, no wallet connection needed.</p>
+  </div>
+  <div class="checks-list">
+    <div class="check-item">
+      <div class="check-name">Dust Attack</div>
+      <div class="check-desc">Micro-transactions sent to your wallet to track your addresses via chain analysis.</div>
+    </div>
+    <div class="check-item">
+      <div class="check-name">Address Poisoning</div>
+      <div class="check-desc">Zero-value transactions from addresses that mimic both your wallet prefix and your contact's suffix simultaneously.</div>
+    </div>
+    <div class="check-item">
+      <div class="check-name">Unlimited Approvals</div>
+      <div class="check-desc">Active ERC-20 allowances granting contracts unlimited access to your tokens.</div>
+    </div>
+    <div class="check-item">
+      <div class="check-name">Fake Token Airdrop</div>
+      <div class="check-desc">Tokens received from unverified contracts impersonating known projects.</div>
+    </div>
+    <div class="check-item check-soon">
+      <div class="check-name">NFT Phishing <span class="soon-tag">soon</span></div>
+      <div class="check-desc">Unsolicited NFTs with phishing URLs embedded in their metadata.</div>
+    </div>
+    <div class="check-item check-soon">
+      <div class="check-name">Permit Phishing <span class="soon-tag">soon</span></div>
+      <div class="check-desc">Off-chain ERC-2612 signatures granting allowances without visible on-chain transactions.</div>
+    </div>
+    <div class="check-item check-soon">
+      <div class="check-name">Sweeper Bot <span class="soon-tag">soon</span></div>
+      <div class="check-desc">Bots draining ETH the moment funds arrive in a compromised wallet.</div>
+    </div>
+    <div class="check-item check-soon">
+      <div class="check-name">Sandwich Attack <span class="soon-tag">soon</span></div>
+      <div class="check-desc">MEV bots frontrunning your DEX swaps to extract value from slippage.</div>
+    </div>
+  </div>
+</div>
+
+<div class="input-section">
+  <div class="input-label">// Enter wallet address to scan</div>
+  <div class="input-row">
+    <div class="input-pre">ETH</div>
+    <input type="text" id="addr" placeholder="0x..." autocomplete="off" spellcheck="false"/>
+    <button class="run-btn" id="runBtn" onclick="runScan()">SCAN</button>
+  </div>
+  <div class="sample-link">No wallet? <a onclick="loadSample()">Load a demo address</a></div>
+  <div class="input-hints">
+    <span>Full history from block 0</span>
+    <span>Runs in your browser</span>
+    <span>No data stored</span>
+  </div>
+</div>
+
+<div class="loader" id="loader">
+  <div class="load-bar-bg"><div class="load-bar"></div></div>
+  <div class="load-label" id="loadLabel">Initializing...</div>
+  <div class="load-steps">
+    <div class="lstep" id="ls0">Fetching full transaction history</div>
+    <div class="lstep" id="ls1">Fetching full token transfer history</div>
+    <div class="lstep" id="ls2">Loading known token list</div>
+    <div class="lstep" id="ls3">Scanning for dust attacks</div>
+    <div class="lstep" id="ls4">Scanning for address poisoning</div>
+    <div class="lstep" id="ls5">Scanning token approvals</div>
+    <div class="lstep" id="ls6">Scoring suspicious tokens (Etherscan + DexScreener)</div>
+    <div class="lstep" id="ls7">Building report</div>
+  </div>
+</div>
+
+<div class="error-box" id="errorBox"></div>
+
+<div class="results" id="results">
+  <div class="rhead">
+    <div>
+      <div class="raddr-label">Analyzed address</div>
+      <div class="raddr">
+        <span class="ah" id="rH"></span><span class="am" id="rM"></span><span class="at" id="rT"></span>
+      </div>
+      <div class="rmeta" id="rMeta"></div>
+    </div>
+    <div class="rscore-side">
+      <div class="rscore-label">Threats found</div>
+      <div class="rscore" id="rScore">0</div>
+      <div class="rverdict" id="rVerdict"></div>
+    </div>
+  </div>
+  <div id="rBody"></div>
+</div>
+
+<div class="edu-section" id="eduSection">
+  <div class="sec-title" style="margin-bottom:16px"><span>// What these attacks are & how to stay safe</span></div>
+
+  <div class="edu-grid">
+
+    <!-- DUST ATTACK -->
+    <div class="edu-card attack">
+      <div class="edu-tag t-attack">⬤ Attack — Dust</div>
+      <div class="edu-title">What is a Dust Attack?</div>
+      <div class="edu-body">
+        <p>An attacker sends tiny amounts of ETH or tokens — so small they're nearly worthless — to thousands of wallets simultaneously. The dust itself is harmless.</p>
+        <p>The goal is what happens next: if you spend that dust (moving it along with other funds), the attacker can use chain analysis to <strong style="color:var(--fg)">link your addresses together</strong> and potentially de-anonymize you. Common tool for tracking high-value wallets.</p>
+      </div>
+    </div>
+
+    <div class="edu-card defense">
+      <div class="edu-tag t-defense">✦ Defense — Dust</div>
+      <div class="edu-title">How to protect yourself</div>
+      <div class="edu-body">
+        <div class="edu-steps">
+          <div class="edu-step"><span class="edu-step-num">01</span><span>Never spend dust. Leave those micro-amounts untouched — they become inert if you don't consolidate them.</span></div>
+          <div class="edu-step"><span class="edu-step-num">02</span><span>Mark suspicious incoming transactions as "dust" in your wallet if it supports it (Ledger Live, MetaMask).</span></div>
+          <div class="edu-step"><span class="edu-step-num">03</span><span>Use a fresh address for each significant transaction. Address reuse amplifies the damage of dust attacks.</span></div>
+          <div class="edu-step"><span class="edu-step-num">04</span><span>Consider using a privacy tool like Railgun or Tornado Cash successors for high-value movements.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADDRESS POISONING -->
+    <div class="edu-card attack">
+      <div class="edu-tag t-attack">⬤ Attack — Address Poisoning</div>
+      <div class="edu-title">What is Address Poisoning?</div>
+      <div class="edu-body">
+        <p>The attacker generates a wallet address that <strong style="color:var(--fg)">looks identical</strong> to one you've interacted with — same first 4–6 and last 4–6 characters. They then send a zero-value transaction to your wallet from that fake address.</p>
+        <p>When you later open your transaction history and copy-paste what you think is your usual contact's address, you accidentally copy the attacker's address instead. One wrong paste can drain everything you intended to send.</p>
+      </div>
+    </div>
+
+    <div class="edu-card defense">
+      <div class="edu-tag t-defense">✦ Defense — Address Poisoning</div>
+      <div class="edu-title">How to protect yourself</div>
+      <div class="edu-body">
+        <div class="edu-steps">
+          <div class="edu-step"><span class="edu-step-num">01</span><span>Always verify the <strong style="color:var(--fg)">full address</strong> before sending — not just first and last characters.</span></div>
+          <div class="edu-step"><span class="edu-step-num">02</span><span>Use your wallet's address book / contacts feature. Save trusted addresses with names and always send from there.</span></div>
+          <div class="edu-step"><span class="edu-step-num">03</span><span>Never copy addresses from your transaction history. Only use saved contacts or verified sources.</span></div>
+          <div class="edu-step"><span class="edu-step-num">04</span><span>Send a small test transaction first when sending to a new address for the first time.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UNLIMITED APPROVALS -->
+    <div class="edu-card attack">
+      <div class="edu-tag t-attack">⬤ Attack — Unlimited Approval</div>
+      <div class="edu-title">What is an Unlimited Token Approval?</div>
+      <div class="edu-body">
+        <p>Every time you interact with a DeFi protocol (Uniswap, OpenSea, etc.), it asks for permission to move your tokens. Many request <strong style="color:var(--fg)">unlimited allowance</strong> — meaning the contract can spend every single token you own, forever, unless you revoke it.</p>
+        <p>If that contract is later exploited or turns malicious, the attacker can drain your entire token balance in a single transaction. You won't even need to sign anything — the permission is already there.</p>
+      </div>
+    </div>
+
+    <div class="edu-card defense">
+      <div class="edu-tag t-defense">✦ Defense — Approvals</div>
+      <div class="edu-title">How to protect yourself</div>
+      <div class="edu-body">
+        <div class="edu-steps">
+          <div class="edu-step"><span class="edu-step-num">01</span><span>Revoke all unlimited approvals you no longer need at <strong style="color:var(--fg)">revoke.cash</strong> — free, takes 2 minutes.</span></div>
+          <div class="edu-step"><span class="edu-step-num">02</span><span>When a protocol asks for approval, set a specific amount instead of "unlimited" — most wallets let you edit this.</span></div>
+          <div class="edu-step"><span class="edu-step-num">03</span><span>Audit your approvals periodically — monthly is a good habit for active DeFi users.</span></div>
+          <div class="edu-step"><span class="edu-step-num">04</span><span>Use a separate "hot wallet" for DeFi interactions — keep your main savings in a wallet with zero approvals.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUSPICIOUS TOKENS -->
+    <div class="edu-card attack">
+      <div class="edu-tag t-attack">⬤ Attack — Fake Token / Airdrop Scam</div>
+      <div class="edu-title">What are Fake Token Airdrops?</div>
+      <div class="edu-body">
+        <p>Attackers send worthless tokens to your wallet — often with names like "Uniswap Reward" or "USDT Bonus". The token itself is a trap: its smart contract is designed so that when you try to sell or interact with it, it either <strong style="color:var(--fg)">steals your real tokens</strong> or redirects you to a phishing site that asks for your seed phrase.</p>
+        <p>A common variant is the <em style="color:var(--amber)">honeypot</em>: a token you can buy but never sell, because the contract blocks all outgoing transfers for non-whitelisted addresses.</p>
+      </div>
+    </div>
+
+    <div class="edu-card defense">
+      <div class="edu-tag t-defense">✦ Defense — Fake Tokens</div>
+      <div class="edu-title">How to protect yourself</div>
+      <div class="edu-body">
+        <div class="edu-steps">
+          <div class="edu-step"><span class="edu-step-num">01</span><span>Never interact with tokens you didn't buy yourself. Ignore unsolicited airdrops entirely.</span></div>
+          <div class="edu-step"><span class="edu-step-num">02</span><span>Before interacting, check the contract on Etherscan — is it verified? When was it deployed? Who holds the supply?</span></div>
+          <div class="edu-step"><span class="edu-step-num">03</span><span>Check liquidity on DexScreener — a token with $0 in liquidity pools is almost certainly worthless or a trap.</span></div>
+          <div class="edu-step"><span class="edu-step-num">04</span><span>Never visit URLs embedded in token metadata or on token contract pages without extreme caution.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GENERAL BEST PRACTICES -->
+    <div class="edu-card defense edu-full">
+      <div class="edu-tag t-defense">✦ General Best Practices — Wallet Security</div>
+      <div class="edu-title">Fundamental habits for staying safe on-chain</div>
+      <div class="edu-body">
+        <div class="edu-grid" style="margin-top:8px;gap:16px 32px">
+          <div>
+            <div class="edu-steps">
+              <div class="edu-step"><span class="edu-step-num">01</span><span><strong style="color:var(--fg)">Hardware wallet</strong> for significant funds. Ledger, Trezor, GridPlus — keep your private key offline.</span></div>
+              <div class="edu-step"><span class="edu-step-num">02</span><span><strong style="color:var(--fg)">Separate wallets</strong> for different purposes: one for DeFi, one for NFTs, one cold storage for savings.</span></div>
+              <div class="edu-step"><span class="edu-step-num">03</span><span><strong style="color:var(--fg)">Never share your seed phrase</strong> with anyone or any website — no legitimate protocol ever asks for it.</span></div>
+              <div class="edu-step"><span class="edu-step-num">04</span><span><strong style="color:var(--fg)">Simulate transactions</strong> before signing using tools like Tenderly, Pocket Universe, or Fire extension.</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="edu-steps">
+              <div class="edu-step"><span class="edu-step-num">05</span><span><strong style="color:var(--fg)">Bookmark official sites</strong>. Phishing sites rank high on Google ads — always use your bookmarks.</span></div>
+              <div class="edu-step"><span class="edu-step-num">06</span><span><strong style="color:var(--fg)">Check URLs carefully</strong> before connecting your wallet. uniswap.org ≠ uniswap-app.io.</span></div>
+              <div class="edu-step"><span class="edu-step-num">07</span><span><strong style="color:var(--fg)">Run this scanner periodically</strong> — not just when something goes wrong. Early detection is everything.</span></div>
+              <div class="edu-step"><span class="edu-step-num">08</span><span><strong style="color:var(--fg)">Revoke.cash monthly</strong>. Treat it like a routine checkup. Takes 5 minutes, can save everything.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="disclaimer">All analysis runs client-side. Your address is sent only to Etherscan's public API and public Ethereum RPC nodes — the same services any block explorer uses. No data is stored by this site.</div>
+
+<footer>
+  <div class="foot-brand">eth<em>exposed</em></div>
+  <div>open source · no tracking · no cookies · client-side</div>
+  <div>Ethereum Mainnet · v0.1</div>
+</footer>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  ★  SOSTITUISCI QUI LA TUA API KEY ETHERSCAN
+//     Registrati gratis su etherscan.io/register
+// ─────────────────────────────────────────────
+const ETHERSCAN_KEY = 'SHEVZ38G21XAY3W5HTA95AFZ9D1D5A229J';
+
+// Fallback RPC pubblici (per eth_getLogs approvals)
+const RPCS = [
+  'https://rpc.ankr.com/eth',
+  'https://ethereum.publicnode.com',
+  'https://eth.llamarpc.com',
+];
+
+// Soglie dust — in USD, non in ETH fisso (il prezzo ETH cambia)
+// Sotto questa soglia in USD = potenziale dust
+const DUST_USD_THRESHOLD  = 1.0;    // $1 — soglia generosa, cattura tutti gli attacchi reali
+// Fallback in ETH se non riusciamo a recuperare il prezzo (0.0004 ETH ≈ $1 a ~$2500)
+const DUST_ETH_FALLBACK   = 0.0004;
+// Token dust: valore nominale irrisorio (es. 0.001 USDT, 1 token sconosciuto)
+const DUST_TOKEN_USD_THRESHOLD = 1.0; // stesso threshold in USD
+
+// Address poisoning: quanti caratteri hex confrontare (escluso "0x")
+const POISON_PREFIX_CHARS = 4;  // chars iniziali che l'indirizzo fake copia dalla VITTIMA
+const POISON_SUFFIX_CHARS = 4;  // chars finali che l'indirizzo fake copia dal CONTATTO
+const UNLIMITED = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+const LARGE_APPROVAL = BigInt('100000000000000000000000'); // 100k tokens * 1e18
+
+// Topic hash ERC-20 Approval
+const TOPIC_APPROVAL = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925';
+
+let KNOWN_TOKENS = new Set(); // populated from Uniswap token list
+
+// ── UTILITIES ────────────────────────────────
+
+const $ = id => document.getElementById(id);
+
+function setStep(i, state) {
+  const el = $('ls' + i);
+  if (!el) return;
+  el.classList.remove('on', 'ok');
+  if (state) el.classList.add(state);
+}
+
+function setLabel(t) { $('loadLabel').textContent = t; }
+
+function showError(msg) {
+  $('errorBox').innerHTML = '⚠ ' + msg;
+  $('errorBox').classList.add('on');
+}
+
+function clearError() { $('errorBox').classList.remove('on'); }
+
+function loadSample() {
+  $('addr').value = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
+}
+
+function short(a) {
+  return a ? a.slice(0,8) + '…' + a.slice(-6) : '';
+}
+
+function formatTs(ts) {
+  return new Date(parseInt(ts) * 1000)
+    .toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' });
+}
+
+function weiToEth(wei) {
+  return Number(BigInt(wei || '0')) / 1e18;
+}
+
+// ADDRESS POISONING — euristica corretta
+// Un indirizzo fake è un attacco di poisoning se:
+//   - i suoi primi N chars HEX corrispondono alla VITTIMA  (inganna il mittente visivo)
+//   - i suoi ultimi N chars HEX corrispondono al CONTATTO  (inganna il destinatario visivo)
+//   - non è identico né alla vittima né al contatto
+// Questo è esattamente come funzionano i tool come Metamask Address Poisoner.
+function isPoisonAddress(fakeAddr, victimAddr, contactAddr) {
+  if (!fakeAddr || !victimAddr || !contactAddr) return false;
+  const fake    = fakeAddr.toLowerCase();
+  const victim  = victimAddr.toLowerCase();
+  const contact = contactAddr.toLowerCase();
+
+  if (fake === victim || fake === contact) return false;
+
+  // +2 per saltare "0x"
+  const prefixLen = POISON_PREFIX_CHARS + 2;
+  const suffixLen = POISON_SUFFIX_CHARS;
+
+  const prefixMatch = fake.slice(0, prefixLen) === victim.slice(0, prefixLen);
+  const suffixMatch = fake.slice(-suffixLen)   === contact.slice(-suffixLen);
+
+  return prefixMatch && suffixMatch;
+}
+
+// ── ETHERSCAN API ────────────────────────────
+// Fetches ALL pages of results automatically
+
+async function etherscan(action, extra = {}) {
+  const base = 'https://api.etherscan.io/v2/api';
+  let all = [];
+  let page = 1;
+  const offset = 10000; // max per page
+
+  while (true) {
+    const params = new URLSearchParams({
+      chainid: 1,           // richiesto dalla V2
+      module: 'account',
+      action,
+      apikey: ETHERSCAN_KEY,
+      sort: 'asc',
+      page,
+      offset,
+      ...extra,
+    });
+    const res = await fetch(`${base}?${params}`);
+    const json = await res.json();
+
+    // status '0' with 'No transactions found' = empty, not error
+    if (json.status === '0') break;
+
+    const batch = json.result || [];
+    all = all.concat(batch);
+
+    // If we got less than a full page, we're done
+    if (batch.length < offset) break;
+    page++;
+  }
+
+  return all;
+}
+
+// ── RPC CALL ─────────────────────────────────
+
+async function rpc(method, params, idx = 0) {
+  if (idx >= RPCS.length) throw new Error('All RPC endpoints failed');
+  try {
+    const res = await fetch(RPCS[idx], {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc:'2.0', id:1, method, params }),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    return json.result;
+  } catch (e) {
+    return rpc(method, params, idx + 1);
+  }
+}
+
+// ── FETCH KNOWN TOKEN LIST ────────────────────
+
+async function loadKnownTokens() {
+  // Baseline hardcoded — major tokens
+  const base = [
+    '0xdac17f958d2ee523a2206206994597c13d831ec7', // USDT
+    '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // USDC
+    '0x6b175474e89094c44da98b954eedeac495271d0f', // DAI
+    '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599', // WBTC
+    '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', // WETH
+    '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984', // UNI
+    '0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9', // AAVE
+    '0x514910771af9ca656af840dff83e8264ecf986ca', // LINK
+    '0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2', // MKR
+    '0xd533a949740bb3306d119cc777fa900ba034cd52', // CRV
+    '0xae7ab96520de3a18e5e111b5eaab095312d7fe84', // stETH
+    '0x4d224452801aced8b2f0aebe155379bb5d594381', // APE
+    '0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce', // SHIB
+    '0x6982508145454ce325ddbe47a25d4ec3d2311933', // PEPE
+  ];
+  base.forEach(a => KNOWN_TOKENS.add(a.toLowerCase()));
+
+  // Try to load full Uniswap list
+  try {
+    const res = await fetch('https://tokens.uniswap.org');
+    if (res.ok) {
+      const json = await res.json();
+      json.tokens
+        .filter(t => t.chainId === 1)
+        .forEach(t => KNOWN_TOKENS.add(t.address.toLowerCase()));
+    }
+  } catch (_) {
+    // Use baseline only — that's fine
+  }
+
+  // Also try CoinGecko token list
+  try {
+    const res = await fetch('https://tokens.coingecko.com/uniswap/all.json');
+    if (res.ok) {
+      const json = await res.json();
+      json.tokens
+        .filter(t => t.chainId === 1)
+        .forEach(t => KNOWN_TOKENS.add(t.address.toLowerCase()));
+    }
+  } catch (_) {}
+}
+
+// ── FETCH ETH PRICE ─────────────────────────────
+// Usa CoinGecko public API — no key, no auth
+// Fallback a 0 se non disponibile (useremo soglia ETH statica)
+async function fetchEthPrice() {
+  try {
+    const res = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd'
+    );
+    if (!res.ok) return 0;
+    const json = await res.json();
+    return json?.ethereum?.usd || 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  CHECKS
+// ═══════════════════════════════════════════════
+
+// 1. DUST ATTACK
+// Controlla sia ETH native che token ERC-20 ricevuti con valore < soglia USD
+// La soglia è in USD per essere stabile al variare del prezzo di ETH
+//
+// Logica:
+//   - tx ETH in entrata con valore < DUST_USD_THRESHOLD
+//   - token transfer in entrata con valore < DUST_TOKEN_USD_THRESHOLD
+//   - mittente mai visto nei contatti legittimi della vittima
+//   - valore > 0 (lo zero è address poisoning, non dust)
+function checkDust(addr, txList, tokenList, ethPriceUSD) {
+  const me = addr.toLowerCase();
+
+  // Soglia ETH calcolata dal prezzo live, o fallback statico
+  const dustEthThreshold = ethPriceUSD > 0
+    ? DUST_USD_THRESHOLD / ethPriceUSD
+    : DUST_ETH_FALLBACK;
+
+  // Indirizzi con cui la vittima ha interagito attivamente (outgoing)
+  const myContacts = new Set();
+  txList.forEach(t => {
+    if (t.from.toLowerCase() === me && t.to)
+      myContacts.add(t.to.toLowerCase());
+  });
+  tokenList.forEach(t => {
+    if (t.from.toLowerCase() === me && t.to)
+      myContacts.add(t.to.toLowerCase());
+  });
+
+  const results = [];
+  const seenDustSenders = new Set(); // dedup per sender
+
+  // ── ETH native dust ──
+  txList.forEach(t => {
+    if (t.to.toLowerCase() !== me) return;
+    if (t.from.toLowerCase() === me) return;
+    const eth = weiToEth(t.value);
+    if (eth === 0) return;                              // zero = poisoning
+    if (eth >= dustEthThreshold) return;               // troppo grande
+    if (myContacts.has(t.from.toLowerCase())) return;  // contatto noto
+    results.push({
+      from: t.from,
+      eth,
+      usd: ethPriceUSD > 0 ? eth * ethPriceUSD : null,
+      type: 'ETH',
+      symbol: 'ETH',
+      date: formatTs(t.timeStamp),
+      hash: t.hash,
+    });
+    seenDustSenders.add(t.from.toLowerCase());
+  });
+
+  // ── Token ERC-20 dust ──
+  // Per i token usiamo due segnali:
+  // 1. Token non in lista noti + valore nominale basso
+  // 2. Valore in USD stimato (solo per stablecoin noti: USDT, USDC, DAI)
+  const STABLECOIN_CONTRACTS = new Set([
+    '0xdac17f958d2ee523a2206206994597c13d831ec7', // USDT
+    '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // USDC
+    '0x6b175474e89094c44da98b954eedeac495271d0f', // DAI
+    '0x4fabb145d64652a948d72533023f6e7a623c7c53', // BUSD
+    '0x0000000000085d4780b73119b644ae5ecd22b376', // TUSD
+  ]);
+
+  tokenList.forEach(t => {
+    if (t.to.toLowerCase() !== me) return;
+    if (t.from.toLowerCase() === me) return;
+    const sender = t.from.toLowerCase();
+    if (myContacts.has(sender)) return;
+    if (seenDustSenders.has(sender)) return; // già segnalato come ETH dust
+
+    const contract = (t.contractAddress || '').toLowerCase();
+    const decimals = parseInt(t.tokenDecimal || '18');
+    const rawVal = parseFloat(t.value || '0');
+    const tokenAmount = rawVal / Math.pow(10, decimals);
+
+    let isDust = false;
+    let usdEstimate = null;
+
+    if (STABLECOIN_CONTRACTS.has(contract)) {
+      // Stablecoin: il valore nominale = USD
+      if (tokenAmount > 0 && tokenAmount < DUST_TOKEN_USD_THRESHOLD) {
+        isDust = true;
+        usdEstimate = tokenAmount;
+      }
+    } else {
+      // Token sconosciuto o non-stablecoin:
+      // Flag come dust se viene da sender non noto e valore è piccolo in assoluto
+      // Non possiamo sapere il prezzo, ma un attacco di token dust
+      // di solito manda quantità molto piccole o molto grandi di token worthless
+      // Usiamo la presenza di token non in lista come segnale aggiuntivo
+      const isUnknownToken = !KNOWN_TOKENS.has(contract);
+      if (isUnknownToken && tokenAmount > 0 && tokenAmount < 10) {
+        isDust = true; // quantità microscopica di token sconosciuto
+      } else if (isUnknownToken && tokenAmount > 1e12) {
+        isDust = true; // quantità astronomica di token worthless (classic scam airdrop)
+      }
+    }
+
+    if (isDust) {
+      results.push({
+        from: t.from,
+        eth: null,
+        usd: usdEstimate,
+        type: 'token',
+        symbol: t.tokenSymbol || '???',
+        amount: tokenAmount,
+        contract,
+        date: formatTs(t.timeStamp),
+        hash: t.hash,
+      });
+    }
+  });
+
+  // Ordina dal più recente
+  return results.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// 2. ADDRESS POISONING
+// Euristica corretta: l'indirizzo fake deve avere simultaneamente
+//   → prefisso uguale alla VITTIMA  (primi POISON_PREFIX_CHARS chars hex)
+//   → suffisso uguale al CONTATTO   (ultimi POISON_SUFFIX_CHARS chars hex)
+// Viene cercato solo tra tx con valore zero (ETH o token) — firma tipica dell'attacco.
+function checkPoisoning(addr, txList, tokenList) {
+  const me = addr.toLowerCase();
+
+  // Costruiamo i contatti legittimi della vittima:
+  // - indirizzi a cui la vittima ha MAI inviato ETH o token (outgoing)
+  // - indirizzi da cui ha ricevuto ETH reale (non zero) — es. exchange, amici
+  const contacts = new Set();
+  txList.forEach(t => {
+    if (t.from.toLowerCase() === me && t.to)
+      contacts.add(t.to.toLowerCase());
+    if (t.to.toLowerCase() === me && weiToEth(t.value) > 0 && t.from)
+      contacts.add(t.from.toLowerCase());
+  });
+  tokenList.forEach(t => {
+    if (t.from.toLowerCase() === me && t.to)
+      contacts.add(t.to.toLowerCase());
+    // Token ricevuti con valore reale da indirizzi noti (es. exchange CEX)
+    if (t.to.toLowerCase() === me && parseInt(t.value || '0') > 0 && t.from)
+      contacts.add(t.from.toLowerCase());
+  });
+
+  const results = [];
+  const seenFake = new Set();
+
+  // Funzione di verifica: controlla se senderRaw è un fake rispetto a ME + qualsiasi contatto
+  const checkSender = (senderRaw, date, hash, via) => {
+    const sender = senderRaw.toLowerCase();
+    if (seenFake.has(sender)) return;
+    if (sender === me) return;
+
+    for (const contact of contacts) {
+      if (isPoisonAddress(sender, me, contact)) {
+        seenFake.add(sender);
+        results.push({
+          fakeAddr:    senderRaw,
+          victimAddr:  addr,
+          contactAddr: contact,
+          date,
+          hash,
+          via,
+        });
+        return; // una corrispondenza basta
+      }
+    }
+  };
+
+  // Tx ETH a valore zero in entrata verso la vittima
+  txList.forEach(t => {
+    if (t.to.toLowerCase() !== me) return;
+    if (weiToEth(t.value) !== 0) return;   // deve essere esattamente zero
+    checkSender(t.from, formatTs(t.timeStamp), t.hash, 'ETH 0-value tx');
+  });
+
+  // Token transfer a valore zero in entrata verso la vittima
+  tokenList.forEach(t => {
+    if (t.to.toLowerCase() !== me) return;
+    if (parseInt(t.value || '0') !== 0) return;
+    checkSender(t.from, formatTs(t.timeStamp), t.hash,
+      (t.tokenSymbol ? t.tokenSymbol + ' transfer' : 'token transfer'));
+  });
+
+  // Ordina dal più recente
+  return results.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// 3. UNLIMITED / LARGE APPROVALS
+// Uses eth_getLogs with Approval topic — searches deep history in chunks
+async function checkApprovals(addr, currentBlock) {
+  const me = addr.toLowerCase();
+  const paddedAddr = '0x000000000000000000000000' + me.slice(2);
+
+  const CHUNK = 100000; // blocks per chunk
+  let logs = [];
+
+  // Scan from block 0 in chunks to avoid RPC limits
+  // Most wallets are < 5 years old so ~2M blocks max
+  const startBlock = Math.max(0, currentBlock - 2000000); // ~last 2 years; extend if needed
+
+  for (let from = startBlock; from < currentBlock; from += CHUNK) {
+    const to = Math.min(from + CHUNK - 1, currentBlock);
+    try {
+      const chunk = await rpc('eth_getLogs', [{
+        fromBlock: '0x' + from.toString(16),
+        toBlock:   '0x' + to.toString(16),
+        topics: [TOPIC_APPROVAL, paddedAddr],
+      }]);
+      if (chunk && chunk.length) logs = logs.concat(chunk);
+    } catch (_) {
+      // If RPC throttles on a chunk, try a smaller window
+      try {
+        const mid = Math.floor((from + to) / 2);
+        const c1 = await rpc('eth_getLogs', [{
+          fromBlock: '0x' + from.toString(16),
+          toBlock:   '0x' + mid.toString(16),
+          topics: [TOPIC_APPROVAL, paddedAddr],
+        }]);
+        const c2 = await rpc('eth_getLogs', [{
+          fromBlock: '0x' + (mid + 1).toString(16),
+          toBlock:   '0x' + to.toString(16),
+          topics: [TOPIC_APPROVAL, paddedAddr],
+        }]);
+        if (c1) logs = logs.concat(c1);
+        if (c2) logs = logs.concat(c2);
+      } catch (_) { /* skip chunk */ }
+    }
+  }
+
+  // Keep only the most recent approval per (token, spender) pair
+  const latestPerPair = new Map();
+  for (const log of logs) {
+    try {
+      const spender = '0x' + log.topics[2].slice(26).toLowerCase();
+      const contract = log.address.toLowerCase();
+      const key = contract + ':' + spender;
+      const blockN = parseInt(log.blockNumber, 16);
+      const existing = latestPerPair.get(key);
+      if (!existing || blockN > existing.blockN) {
+        latestPerPair.set(key, {
+          contract,
+          spender,
+          amount: BigInt(log.data),
+          blockN,
+        });
+      }
+    } catch (_) {}
+  }
+
+  // Filter: only approvals that are still problematically large
+  const results = [];
+  for (const entry of latestPerPair.values()) {
+    if (entry.amount === 0n) continue; // already revoked
+    if (entry.amount >= UNLIMITED) {
+      results.push({ ...entry, severity: 'unlimited' });
+    } else if (entry.amount >= LARGE_APPROVAL) {
+      results.push({ ...entry, severity: 'large' });
+    }
+  }
+
+  return results.sort((a, b) =>
+    a.severity === 'unlimited' && b.severity !== 'unlimited' ? -1 : 1
+  );
+}
+
+// 4. TOKEN SUSPICION SCORING
+// Sistema a punteggio per valutare quanto è sospetto ogni token ricevuto.
+// Non usiamo solo il nome — usiamo dati on-chain reali.
+//
+// Punteggio (0-100):
+//   +40  contratto non verificato su Etherscan
+//   +25  non in nessuna token list nota (Uniswap + CoinGecko)
+//   +20  nome/simbolo imita brand noto (USDT, Uniswap, ecc.)
+//   +15  zero o bassissima liquidità su DEX (< $1000 USD)
+// ─────────────────────────────────────────────
+//   ≥ 70 → CRITICAL
+//   40-69 → WARNING
+//   < 40  → ignorato (probabilmente legit ma non in lista)
+
+const KNOWN_BRANDS = [
+  'uniswap','usdt','usdc','dai','aave','compound','curve','sushi',
+  'link','wbtc','weth','matic','polygon','arbitrum','optimism','chainlink',
+  'lido','maker','synthetix','balancer','yearn','convex','frax','pepe',
+  'shib','doge','uni','comp','snx','mkr','yfi','crv','cvx',
+];
+
+// Batch fetch: verifica se i contratti sono verificati su Etherscan
+// Usa getsourcecode — se SourceCode è vuoto = non verificato
+async function fetchVerifiedStatus(contracts) {
+  const result = new Map(); // contract -> true/false (true = verificato)
+  // Max 5 parallele per non fare rate limit
+  const BATCH = 5;
+  for (let i = 0; i < contracts.length; i += BATCH) {
+    const batch = contracts.slice(i, i + BATCH);
+    await Promise.all(batch.map(async contract => {
+      try {
+        const params = new URLSearchParams({
+          chainid: 1,
+          module: 'contract',
+          action: 'getsourcecode',
+          address: contract,
+          apikey: ETHERSCAN_KEY,
+        });
+        const res = await fetch(`https://api.etherscan.io/v2/api?${params}`);
+        const json = await res.json();
+        const src = json?.result?.[0]?.SourceCode || '';
+        result.set(contract, src.length > 0);
+      } catch (_) {
+        result.set(contract, null); // null = non sappiamo
+      }
+    }));
+  }
+  return result;
+}
+
+// Batch fetch liquidità da DexScreener
+// Endpoint: GET https://api.dexscreener.com/tokens/v1/ethereum/{addr1},{addr2},...
+// Max 30 indirizzi per chiamata secondo la doc
+async function fetchDexScreenerLiquidity(contracts) {
+  const result = new Map(); // contract -> liquidityUSD (null = non trovato)
+  const BATCH = 30;
+  for (let i = 0; i < contracts.length; i += BATCH) {
+    const batch = contracts.slice(i, i + BATCH);
+    try {
+      const url = `https://api.dexscreener.com/tokens/v1/ethereum/${batch.join(',')}`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const pairs = await res.json(); // array di pair objects
+      if (!Array.isArray(pairs)) continue;
+      // Per ogni contratto, prendi la liquidità massima tra tutti i suoi pair
+      batch.forEach(contract => {
+        const contractPairs = pairs.filter(p =>
+          p?.baseToken?.address?.toLowerCase() === contract.toLowerCase()
+        );
+        if (contractPairs.length === 0) {
+          result.set(contract, 0); // nessun pair = zero liquidità
+        } else {
+          const maxLiq = Math.max(...contractPairs.map(p => p?.liquidity?.usd || 0));
+          result.set(contract, maxLiq);
+        }
+      });
+    } catch (_) {
+      batch.forEach(c => result.set(c, null));
+    }
+  }
+  return result;
+}
+
+async function checkSuspiciousTokens(addr, tokenList) {
+  const me = addr.toLowerCase();
+
+  // Raccoglie token ricevuti non in lista nota, deduplicati per contratto
+  const candidates = new Map(); // contract -> primo evento token
+  tokenList.forEach(t => {
+    if (t.to.toLowerCase() !== me) return;
+    const contract = (t.contractAddress || '').toLowerCase();
+    if (!contract) return;
+    if (KNOWN_TOKENS.has(contract)) return; // token noto = skip
+    if (!candidates.has(contract)) {
+      candidates.set(contract, t);
+    }
+  });
+
+  if (candidates.size === 0) return [];
+
+  const contracts = [...candidates.keys()];
+
+  // Fetch parallelo: stato verifica + liquidità
+  const [verifiedMap, liquidityMap] = await Promise.all([
+    fetchVerifiedStatus(contracts),
+    fetchDexScreenerLiquidity(contracts),
+  ]);
+
+  // Calcola punteggio per ogni token
+  const results = [];
+
+  for (const [contract, t] of candidates) {
+    let score = 0;
+    const reasons = [];
+
+    // +25 non in token list nota
+    score += 25;
+    reasons.push('Not in any known token list');
+
+    // +40 contratto non verificato
+    const isVerified = verifiedMap.get(contract);
+    if (isVerified === false) {
+      score += 40;
+      reasons.push('Contract source code not verified on Etherscan');
+    }
+
+    // +20 nome imita brand noto
+    const nameLower = ((t.tokenName || '') + (t.tokenSymbol || '')).toLowerCase();
+    const mimickedBrand = KNOWN_BRANDS.find(b => nameLower.includes(b));
+    if (mimickedBrand) {
+      score += 20;
+      reasons.push(`Name mimics known project: "${mimickedBrand}"`);
+    }
+
+    // +15 zero o bassissima liquidità
+    const liquidity = liquidityMap.get(contract);
+    if (liquidity !== null && liquidity !== undefined) {
+      if (liquidity < 1000) {
+        score += 15;
+        reasons.push(`Very low DEX liquidity: $${liquidity.toFixed(0)}`);
+      }
+    } else if (liquidity === 0) {
+      score += 15;
+      reasons.push('No DEX liquidity found');
+    }
+
+    if (score < 40) continue; // non abbastanza sospetto da segnalare
+
+    results.push({
+      contract,
+      name: t.tokenName || 'Unknown Token',
+      symbol: t.tokenSymbol || '???',
+      score,
+      severity: score >= 70 ? 'critical' : 'warning',
+      reasons,
+      isVerified,
+      liquidity: liquidityMap.get(contract),
+      mimickedBrand: mimickedBrand || null,
+      date: formatTs(t.timeStamp),
+    });
+  }
+
+  // Ordina: critical prima, poi per score decrescente
+  return results.sort((a, b) => b.score - a.score);
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════
+
+function card(title, desc, status, inner) {
+  const cls   = { critical:'crit', warning:'warn', clean:'ok', skip:'skip' }[status];
+  const bcls  = { critical:'cb-crit', warning:'cb-warn', clean:'cb-ok', skip:'cb-skip' }[status];
+  const label = { critical:'Critical', warning:'Warning', clean:'Clean', skip:'Coming soon' }[status];
+  return `<div class="card ${cls}"><div class="ci">
+    <div class="ctop"><div class="cname">${title}</div><span class="cbadge ${bcls}">${label}</span></div>
+    <div class="cdesc">${desc}</div>
+    ${inner}
+  </div></div>`;
+}
+
+function finding(status, text) {
+  const cls = { critical:'cf-crit', warning:'cf-warn', clean:'cf-ok', skip:'cf-skip' }[status];
+  return `<div class="cfinding ${cls}">${text}</div>`;
+}
+
+function renderResults(rawAddr, dust, poison, approvals, fakeTokens, txCount, tokenCount, blockHeight) {
+  // Address display
+  $('rH').textContent = rawAddr.slice(0,6);
+  $('rM').textContent = rawAddr.slice(6,-4);
+  $('rT').textContent = rawAddr.slice(-4);
+
+  const criticalThreats = [
+    dust.length > 0,
+    poison.length > 0,
+    approvals.some(a => a.severity === 'unlimited'),
+    fakeTokens.some(t => t.severity === 'critical'),
+  ].filter(Boolean).length;
+
+  const warnings = [
+    approvals.some(a => a.severity === 'large'),
+    fakeTokens.some(t => t.severity === 'warning'),
+  ].filter(Boolean).length;
+
+  const total = criticalThreats + warnings;
+
+  const scoreEl = $('rScore');
+  scoreEl.textContent = total;
+  scoreEl.className = 'rscore ' + (total === 0 ? 'green' : criticalThreats > 0 ? 'red' : 'amber');
+
+  const vEl = $('rVerdict');
+  if (total === 0) { vEl.textContent = 'NO THREATS DETECTED'; vEl.className = 'rverdict rv-green'; }
+  else if (criticalThreats === 0) { vEl.textContent = 'WARNINGS FOUND — REVIEW BELOW'; vEl.className = 'rverdict rv-amber'; }
+  else { vEl.textContent = 'CRITICAL THREATS — ACTION REQUIRED'; vEl.className = 'rverdict rv-red'; }
+
+  $('rMeta').innerHTML = [
+    'Ethereum Mainnet',
+    `Block #${blockHeight.toLocaleString()}`,
+    `${txCount.toLocaleString()} transactions`,
+    `${tokenCount.toLocaleString()} token transfers`,
+  ].map(s => `<span>${s}</span>`).join('');
+
+  let html = '';
+
+  // ── CRITICAL ──────────────────────────────
+  if (criticalThreats > 0) {
+    html += `<div class="sec-title"><span>// Critical threats</span></div><div class="cards">`;
+
+    // DUST
+    if (dust.length > 0) {
+      const items = dust.slice(0, 8).map(d => {
+        // Mostra valore in modo appropriato per tipo
+        let valDisplay;
+        if (d.type === 'ETH') {
+          valDisplay = d.usd != null
+            ? `$${d.usd.toFixed(3)} (${d.eth.toFixed(6)} ETH)`
+            : `${d.eth.toFixed(8)} ETH`;
+        } else {
+          valDisplay = d.usd != null
+            ? `$${d.usd.toFixed(3)} ${d.symbol}`
+            : `${d.amount != null ? d.amount.toFixed(4) : '?'} ${d.symbol}`;
+        }
+        return `<div class="dl-row dust">
+          <span class="dl-addr">${short(d.from)}</span>
+          <span class="dl-amount">${valDisplay}</span>
+          <span class="dl-date">${d.date}</span>
+        </div>`;
+      }).join('');
+      const more = dust.length > 8
+        ? `<div class="dl-row"><span class="dl-addr" style="color:var(--dim)">+ ${dust.length - 8} more dust transactions in full history</span></div>`
+        : '';
+      const ethCount = dust.filter(d => d.type === 'ETH').length;
+      const tokCount = dust.filter(d => d.type === 'token').length;
+      const summary = [
+        ethCount > 0 ? `${ethCount} ETH` : '',
+        tokCount > 0 ? `${tokCount} token` : '',
+      ].filter(Boolean).join(' + ');
+      html += card('Dust Attack',
+        `Micro-transactions (${summary}) sent to your wallet to track your addresses via chain analysis. Each sender is unknown to your wallet history.`,
+        'critical',
+        `<div class="detail-list">${items}${more}</div>`);
+    }
+
+    // POISONING
+    if (poison.length > 0) {
+      const pairs = poison.slice(0, 4).map(p => {
+        const fake    = p.fakeAddr.toLowerCase();
+        const victim  = p.victimAddr.toLowerCase();
+        const contact = p.contactAddr.toLowerCase();
+        const pLen = POISON_PREFIX_CHARS + 2;
+        const sLen = POISON_SUFFIX_CHARS;
+        // Evidenzia la parte che matcha in ogni indirizzo
+        const highlightPrefix = (addr, len) =>
+          `<span style="color:var(--amber)">${addr.slice(0,len)}</span>${addr.slice(len)}`;
+        const highlightSuffix = (addr, len) =>
+          `${addr.slice(0,-len)}<span style="color:var(--amber)">${addr.slice(-len)}</span>`;
+        return `<div class="poison-pair">
+          <div class="pp-row"><span class="pp-tag">VICTIM</span><span class="pp-real">${highlightSuffix(highlightPrefix(victim, pLen), sLen)}</span></div>
+          <div class="pp-row"><span class="pp-tag">FAKE</span><span class="pp-fake">${highlightSuffix(highlightPrefix(fake, pLen), sLen)}</span></div>
+          <div class="pp-row"><span class="pp-tag">TARGET</span><span style="color:#777;font-family:var(--mono);font-size:.6rem;word-break:break-all">${highlightSuffix(contact, sLen)}</span></div>
+          <div class="pp-note">↑ fake copies victim prefix <span style="color:var(--amber)">(yellow)</span> + target contact suffix · via ${p.via} · ${p.date}</div>
+        </div>`;
+      }).join('');
+      const more = poison.length > 4
+        ? `<div style="font-family:var(--mono);font-size:.6rem;color:var(--dim);margin-top:6px">+ ${poison.length - 4} more poisoning attempts in full history</div>`
+        : '';
+      html += card('Address Poisoning',
+        'Attacker sent zero-value transactions from an address that copies your wallet\'s prefix AND your contact\'s suffix — designed to trick you into sending funds to the wrong address.',
+        'critical',
+        pairs + more);
+    }
+
+    // UNLIMITED APPROVALS
+    const unlim = approvals.filter(a => a.severity === 'unlimited');
+    if (unlim.length > 0) {
+      const rows = unlim.slice(0, 6).map(a =>
+        `<tr>
+          <td class="at-token">${short(a.contract)}</td>
+          <td style="font-family:var(--mono);font-size:.58rem;color:#444">${short(a.spender)}</td>
+          <td class="at-unlimited">∞ Unlimited</td>
+        </tr>`).join('');
+      html += card('Unlimited Token Approvals',
+        'You\'ve granted contracts permission to spend unlimited token amounts from your wallet. If any of these contracts are malicious or get hacked, your tokens can be drained.',
+        'critical',
+        `<table class="appr-table">
+          <thead><tr><th>Token</th><th>Spender contract</th><th>Allowance</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="revoke-row">→ Revoke at <a href="https://revoke.cash" target="_blank">revoke.cash</a> — free, takes 2 minutes per approval</div>`);
+    }
+
+    // SUSPICIOUS TOKENS — CRITICAL (score >= 70)
+    const critTokens = fakeTokens.filter(t => t.severity === 'critical');
+    if (critTokens.length > 0) {
+      const items = critTokens.slice(0, 5).map(t => {
+        const liqTxt = t.liquidity != null
+          ? (t.liquidity < 1000 ? `$${t.liquidity.toFixed(0)} liq` : `$${(t.liquidity/1000).toFixed(1)}k liq`)
+          : 'no liq data';
+        const verTxt = t.isVerified === false ? 'unverified' : t.isVerified === true ? 'verified' : '?';
+        return `<div style="margin-bottom:8px;padding:8px 10px;background:rgba(255,48,48,.04);border-radius:2px;border:1px solid rgba(255,48,48,.1)">
+          <div style="font-family:var(--mono);font-size:.68rem;color:var(--fg);font-weight:500;margin-bottom:4px">
+            ${t.name} <span style="color:var(--mid)">(${t.symbol})</span>
+            <span style="float:right;color:var(--red);font-size:.6rem">score ${t.score}/100</span>
+          </div>
+          <div style="font-family:var(--mono);font-size:.58rem;color:var(--mid);margin-bottom:4px">
+            ${short(t.contract)} · ${verTxt} · ${liqTxt} · ${t.date}
+          </div>
+          <div style="font-family:var(--mono);font-size:.58rem;color:#cc5252">
+            ${t.reasons.map(r => '→ ' + r).join('<br>')}
+          </div>
+        </div>`;
+      }).join('');
+      html += card('Suspicious Token Received',
+        'These tokens scored high on our suspicion scale — unverified contract, no liquidity, and/or name impersonating a known project. Do not interact.',
+        'critical',
+        `${items}${finding('critical', 'Do NOT interact with these tokens or visit any URLs associated with them.')}`);
+    }
+
+    html += `</div>`;
+  }
+
+  // ── WARNINGS ──────────────────────────────
+  const largeApprovals = approvals.filter(a => a.severity === 'large');
+  const warnTokens2    = fakeTokens.filter(t => t.severity === 'warning');
+
+  if (largeApprovals.length > 0 || warnTokens2.length > 0) {
+    html += `<div class="sec-title"><span>// Warnings</span></div><div class="cards">`;
+
+    if (largeApprovals.length > 0) {
+      const rows = largeApprovals.slice(0, 5).map(a =>
+        `<tr>
+          <td class="at-token">${short(a.contract)}</td>
+          <td style="font-family:var(--mono);font-size:.58rem;color:#444">${short(a.spender)}</td>
+          <td class="at-large">Very large</td>
+        </tr>`).join('');
+      html += card('Large Token Approvals',
+        'Very large (but not unlimited) allowances granted to contracts. Lower risk than unlimited but worth reviewing.',
+        'warning',
+        `<table class="appr-table">
+          <thead><tr><th>Token</th><th>Spender</th><th>Allowance</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="revoke-row">→ Review and revoke at <a href="https://revoke.cash" target="_blank">revoke.cash</a></div>`);
+    }
+
+    const warnTokens = fakeTokens.filter(t => t.severity === 'warning');
+    if (warnTokens.length > 0) {
+      const items = warnTokens.slice(0, 5).map(t => {
+        const liqTxt = t.liquidity != null
+          ? (t.liquidity < 1000 ? `$${t.liquidity.toFixed(0)} liq` : `$${(t.liquidity/1000).toFixed(1)}k liq`)
+          : 'no liq data';
+        return `<div style="margin-bottom:6px;padding:7px 9px;background:rgba(245,166,35,.04);border-radius:2px;border:1px solid rgba(245,166,35,.12)">
+          <div style="font-family:var(--mono);font-size:.66rem;color:var(--fg);font-weight:500;margin-bottom:3px">
+            ${t.name} <span style="color:var(--mid)">(${t.symbol})</span>
+            <span style="float:right;color:var(--amber);font-size:.58rem">score ${t.score}/100</span>
+          </div>
+          <div style="font-family:var(--mono);font-size:.57rem;color:var(--mid);margin-bottom:3px">
+            ${short(t.contract)} · ${liqTxt} · ${t.date}
+          </div>
+          <div style="font-family:var(--mono);font-size:.57rem;color:#9a7022">
+            ${t.reasons.map(r => '→ ' + r).join('<br>')}
+          </div>
+        </div>`;
+      }).join('');
+      const more = warnTokens.length > 5
+        ? `<div style="font-family:var(--mono);font-size:.58rem;color:var(--dim);margin-top:4px">+ ${warnTokens.length - 5} more suspicious tokens</div>` : '';
+      html += card('Suspicious Token Received',
+        'These tokens show some suspicious signals but did not reach critical threshold. Verify before interacting.',
+        'warning',
+        items + more);
+    }
+
+    html += `</div>`;
+  }
+
+  // ── CLEAN / COMING SOON ───────────────────
+  html += `<div class="sec-title"><span>// Full check results</span></div><div class="cards">`;
+
+  if (dust.length === 0)
+    html += card('Dust Attack', 'Micro-transactions used for chain analysis tracking.', 'clean',
+      finding('clean', `No dust transactions found across all ${txCount.toLocaleString()} analyzed transactions.`));
+
+  if (poison.length === 0)
+    html += card('Address Poisoning', 'Zero-value lookalike transactions designed to corrupt your address book.', 'clean',
+      finding('clean', 'No address poisoning attempts detected in full transaction history.'));
+
+  if (approvals.length === 0)
+    html += card('Token Approvals', 'Unlimited or large ERC-20 allowances granted to external contracts.', 'clean',
+      finding('clean', 'No unlimited or excessively large approvals found.'));
+
+  if (fakeTokens.length === 0)
+    html += card('Suspicious Token Check', 'Scored every received token against Etherscan verification + DexScreener liquidity.', 'clean',
+      finding('clean', 'No suspicious tokens detected — all received tokens either verified or in known lists.'));
+
+  html += card('NFT Phishing', 'Unsolicited NFTs with phishing URLs embedded in metadata.', 'skip',
+    finding('skip', 'NFT metadata scanning coming in v0.2 — requires off-chain metadata indexing.'));
+
+  html += card('Sweeper Bot', 'Automated bot that drains ETH immediately after deposit into a compromised wallet.', 'skip',
+    finding('skip', 'Sweeper bot detection coming in v0.2.'));
+
+  html += card('Permit Phishing', 'Off-chain ERC-2612 permit signatures granting allowances without visible on-chain transactions.', 'skip',
+    finding('skip', 'Permit event scanning coming in v0.2.'));
+
+  html += card('Sandwich Attack', 'MEV bots frontrunning your DEX swaps to extract value from slippage.', 'skip',
+    finding('skip', 'Sandwich attack detection coming in v0.2.'));
+
+  html += `</div>`;
+
+  $('rBody').innerHTML = html;
+  $('results').classList.add('on');
+  $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ═══════════════════════════════════════════════
+//  MAIN
+// ═══════════════════════════════════════════════
+
+async function runScan() {
+  const raw = $('addr').value.trim();
+  if (!raw) { $('addr').focus(); return; }
+  if (!/^0x[0-9a-fA-F]{40}$/.test(raw)) {
+    showError('Invalid Ethereum address. Must be 0x followed by 40 hex characters.');
+    return;
+  }
+
+  clearError();
+  $('results').classList.remove('on');
+  $('loader').classList.add('on');
+  $('runBtn').disabled = true;
+
+  for (let i = 0; i <= 7; i++) setStep(i, null);
+
+  try {
+    // ── 0: tx history ─────────────────────
+    setStep(0, 'on'); setLabel('Fetching full transaction history from block 0...');
+    const [txList, blockHex] = await Promise.all([
+      etherscan('txlist', { address: raw, startblock: 0, endblock: 99999999 }),
+      rpc('eth_blockNumber', []),
+    ]);
+    const blockHeight = parseInt(blockHex, 16);
+    setStep(0, 'ok');
+
+    // ── 1: token transfers ─────────────────
+    setStep(1, 'on'); setLabel('Fetching full token transfer history...');
+    const tokenList = await etherscan('tokentx', { address: raw, startblock: 0, endblock: 99999999 });
+    setStep(1, 'ok');
+
+    // ── 2: token list + ETH price ──────────
+    setStep(2, 'on'); setLabel('Loading token list & ETH price...');
+    const [_, ethPriceUSD] = await Promise.all([
+      loadKnownTokens(),
+      fetchEthPrice(),
+    ]);
+    setStep(2, 'ok');
+
+    // ── 3: dust ────────────────────────────
+    // Passa tokenList e prezzo ETH per soglia in USD
+    setStep(3, 'on'); setLabel('Scanning for dust attacks (ETH + tokens)...');
+    const dust = checkDust(raw, txList, tokenList, ethPriceUSD);
+    setStep(3, 'ok');
+
+    // ── 4: poisoning ───────────────────────
+    setStep(4, 'on'); setLabel('Scanning for address poisoning...');
+    const poison = checkPoisoning(raw, txList, tokenList);
+    setStep(4, 'ok');
+
+    // ── 5: approvals ───────────────────────
+    setStep(5, 'on'); setLabel('Scanning token approval history via on-chain logs...');
+    const approvals = await checkApprovals(raw, blockHeight);
+    setStep(5, 'ok');
+
+    // ── 6: suspicious token scoring ────────
+    // Chiama Etherscan (verifica contratto) + DexScreener (liquidità) per ogni token ricevuto
+    setStep(6, 'on'); setLabel('Scoring suspicious tokens via Etherscan + DexScreener...');
+    const fakeTokens = await checkSuspiciousTokens(raw, tokenList);
+    setStep(6, 'ok');
+
+    // ── 7: render ──────────────────────────
+    setStep(7, 'on'); setLabel('Building report...');
+    await new Promise(r => setTimeout(r, 200));
+    setStep(7, 'ok');
+
+    $('loader').classList.remove('on');
+    renderResults(raw, dust, poison, approvals, fakeTokens, txList.length, tokenList.length, blockHeight);
+
+  } catch (err) {
+    $('loader').classList.remove('on');
+    showError(
+      err.message?.includes('Invalid API Key')
+        ? 'Etherscan API key not set or invalid. Open the HTML file, find ETHERSCAN_KEY at the top of the script, and la key Etherscan nel file non è valida o mancante.'
+        : 'Scan failed: ' + (err.message || 'Network error. Check your connection.')
+    );
+    console.error(err);
+  } finally {
+    $('runBtn').disabled = false;
+  }
+}
+
+$('addr').addEventListener('keydown', e => { if (e.key === 'Enter') runScan(); });
+</script>
+</body>
+</html>
